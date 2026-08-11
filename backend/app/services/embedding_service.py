@@ -1,20 +1,19 @@
 """
 app/services/embedding_service.py
 ───────────────────────────────────
-Singleton embedding service using sentence-transformers.
+UPDATED: Uses LangChain HuggingFaceEmbeddings wrapper.
 
-Why sentence-transformers/all-MiniLM-L6-v2?
-  - 384-dimensional vectors (fast, small)
-  - Excellent semantic similarity performance
-  - Runs locally — no API cost, no rate limits
-  - First load downloads model (~90 MB) then caches it
+Before: direct sentence_transformers.SentenceTransformer
+After:  langchain_huggingface.HuggingFaceEmbeddings
 
-The service is a singleton — model loads once when first called.
+Why the LangChain wrapper?
+  - Same underlying sentence-transformers model
+  - LangGraph tools expect LangChain Embeddings interface
+  - normalize_embeddings=True → cosine similarity works correctly
+  - Consistent with the rest of the LangChain stack
 """
 
 import logging
-from typing import Union
-
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -22,53 +21,45 @@ logger = logging.getLogger(__name__)
 
 class EmbeddingService:
     """
-    Singleton sentence-transformers embedding service.
-    Thread-safe — model is loaded once on first use.
+    Thin wrapper around LangChain HuggingFaceEmbeddings.
+    Provides the same .embed_text() / .embed_batch() interface
+    the rest of the codebase expects.
     """
-    _instance = None
-    _model    = None
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+    def __init__(self):
+        # Lazy — model loads on first call
+        self._lc_embeddings = None
 
     def _ensure_loaded(self):
-        if self._model is None:
-            from sentence_transformers import SentenceTransformer
-            logger.info(f'[Embedding] Loading model: {settings.EMBEDDING_MODEL}')
-            self._model = SentenceTransformer(settings.EMBEDDING_MODEL)
-            logger.info(f'[Embedding] Model ready — dim={settings.EMBEDDING_DIMENSION}')
+        if self._lc_embeddings is None:
+            # Import from our central setup — singleton guaranteed
+            from app.core.langchain_setup import embeddings as lc_emb
+            self._lc_embeddings = lc_emb
+            logger.info(f'[Embedding] Ready — model: {settings.EMBEDDING_MODEL}')
 
     def embed_text(self, text: str) -> list[float]:
-        """
-        Embed a single text string.
-        Returns a list of floats (384 dims for MiniLM).
-        """
+        """Embed a single string → list[float] (384 dims for MiniLM)."""
         self._ensure_loaded()
-        text = text.strip()[:8000]   # guard against massive inputs
-        vector = self._model.encode(text, convert_to_numpy=True)
-        return vector.tolist()
+        text = text.strip()[:8000]
+        return self._lc_embeddings.embed_query(text)
 
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """
-        Embed multiple texts in a single forward pass (much faster than looping).
-        Use this when embedding all chunks of a document.
+        Embed multiple strings — uses embed_documents() which
+        LangChain batches internally for efficiency.
         """
         self._ensure_loaded()
         cleaned = [t.strip()[:8000] for t in texts]
-        vectors = self._model.encode(
-            cleaned,
-            convert_to_numpy=True,
-            batch_size=32,            # process 32 chunks at a time
-            show_progress_bar=False,
-        )
-        return [v.tolist() for v in vectors]
+        return self._lc_embeddings.embed_documents(cleaned)
+
+    def get_langchain_embeddings(self):
+        """Return the raw LangChain Embeddings object (used by agents)."""
+        self._ensure_loaded()
+        return self._lc_embeddings
 
     @property
     def dimension(self) -> int:
         return settings.EMBEDDING_DIMENSION
 
 
-# Singleton instance
 embedding_service = EmbeddingService()

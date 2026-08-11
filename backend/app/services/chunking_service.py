@@ -1,27 +1,25 @@
 """
 app/services/chunking_service.py
 ──────────────────────────────────
-Intelligent text chunking for RAG.
+UPDATED: Uses LangChain RecursiveCharacterTextSplitter.
 
-Why chunk?
-  - LLMs have context window limits
-  - Smaller chunks = more precise retrieval
-  - Overlap prevents cutting mid-sentence
+Before: custom sentence-boundary splitter
+After:  LangChain RecursiveCharacterTextSplitter
 
-Strategy:
-  1. Split on sentence boundaries (not arbitrary character count)
-  2. Accumulate sentences until chunk_size reached
-  3. Overlap: carry last N words into next chunk
-  4. Preserve page metadata per chunk
-
-Config (from .env):
-  CHUNK_SIZE    = 800  (target words per chunk)
-  CHUNK_OVERLAP = 150  (words of overlap between chunks)
+Why RecursiveCharacterTextSplitter?
+  - Tries to split on paragraphs → sentences → words → chars (in order)
+  - Preserves semantic meaning better than fixed-size splitting
+  - Industry standard for RAG chunking
+  - chunk_size measured in characters (more precise than words)
+  - chunk_overlap prevents losing context at chunk boundaries
+  - LangChain Document objects carry metadata natively
 """
 
-import re
 import logging
 from dataclasses import dataclass
+
+from langchain_core.documents import Document as LCDocument
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.core.config import settings
 
@@ -38,144 +36,109 @@ class Chunk:
 
 
 class ChunkingService:
+    """
+    Document chunking using LangChain RecursiveCharacterTextSplitter.
 
-    def __init__(
-        self,
-        chunk_size:    int = None,
-        chunk_overlap: int = None,
-    ):
-        self.chunk_size    = chunk_size    or settings.CHUNK_SIZE
-        self.chunk_overlap = chunk_overlap or settings.CHUNK_OVERLAP
+    Splitting priority (recursive):
+      1. Double newline (paragraphs)
+      2. Single newline
+      3. Period/sentence end
+      4. Space (words)
+      5. Character (last resort)
+    """
+
+    def __init__(self, chunk_size: int = None, chunk_overlap: int = None):
+        # LangChain splitter measures in characters (not words)
+        # Multiply word-count settings by ~5 (avg chars per word)
+        char_size    = (chunk_size    or settings.CHUNK_SIZE)    * 5
+        char_overlap = (chunk_overlap or settings.CHUNK_OVERLAP) * 5
+
+        self._splitter = RecursiveCharacterTextSplitter(
+            chunk_size        = char_size,
+            chunk_overlap     = char_overlap,
+            length_function   = len,
+            separators        = ['\n\n', '\n', '. ', '! ', '? ', ' ', ''],
+            keep_separator    = True,
+            add_start_index   = True,   # metadata: start_index in original text
+        )
 
     def chunk_document(
         self,
-        pages: list[dict],   # [{'page_number': 1, 'text': '...'}]
+        pages:       list[dict],   # [{'page_number': 1, 'text': '...'}]
         document_id: str,
     ) -> list[Chunk]:
         """
-        Chunk all pages of a document.
-        Preserves page number metadata for citations.
-
-        Returns list of Chunk objects ready for embedding.
+        Chunk all pages using LangChain splitter.
+        Each page becomes a LangChain Document with page metadata,
+        then the splitter divides it into chunks preserving that metadata.
         """
-        all_chunks = []
-        chunk_idx  = 0
-
+        # Build LangChain Document objects per page
+        lc_docs = []
         for page in pages:
-            page_num = page['page_number']
-            text     = page['text'].strip()
-
+            text = page.get('text', '').strip()
             if not text:
                 continue
+            lc_docs.append(LCDocument(
+                page_content = text,
+                metadata     = {
+                    'page_number': page['page_number'],
+                    'document_id': document_id,
+                },
+            ))
 
-            page_chunks = self._chunk_text(text, page_num, chunk_idx, document_id)
-            all_chunks.extend(page_chunks)
-            chunk_idx += len(page_chunks)
-
-        logger.info(f'[Chunking] Document {document_id}: {len(all_chunks)} chunks from {len(pages)} pages')
-        return all_chunks
-
-    def _chunk_text(
-        self,
-        text:        str,
-        page_number: int,
-        start_idx:   int,
-        document_id: str,
-    ) -> list[Chunk]:
-        """
-        Split a single page's text into overlapping chunks.
-
-        Why sentence-based splitting?
-          - Preserves semantic meaning
-          - No mid-sentence cuts
-          - Better retrieval quality
-        """
-        sentences = self._split_sentences(text)
-        if not sentences:
+        if not lc_docs:
             return []
 
-        chunks      = []
-        current     = []
-        current_len = 0
-        chunk_idx   = start_idx
+        # Split all pages — LangChain preserves metadata in each chunk
+        split_docs = self._splitter.split_documents(lc_docs)
 
-        for sentence in sentences:
-            words     = sentence.split()
-            word_count = len(words)
-
-            # If single sentence exceeds chunk_size, add it alone
-            if word_count > self.chunk_size:
-                if current:
-                    chunks.append(self._make_chunk(current, chunk_idx, page_number, document_id))
-                    chunk_idx += 1
-                    current, current_len = [], 0
-
-                # Split long sentence by hard limit
-                for sub in self._hard_split(sentence):
-                    chunks.append(self._make_chunk([sub], chunk_idx, page_number, document_id))
-                    chunk_idx += 1
+        # Convert to our Chunk dataclass
+        chunks = []
+        for idx, doc in enumerate(split_docs):
+            page_number = doc.metadata.get('page_number', 1)
+            content     = doc.page_content.strip()
+            if not content:
                 continue
 
-            if current_len + word_count > self.chunk_size and current:
-                # Flush current chunk
-                chunks.append(self._make_chunk(current, chunk_idx, page_number, document_id))
-                chunk_idx += 1
+            chunks.append(Chunk(
+                chunk_index = idx,
+                content     = content,
+                page_number = page_number,
+                token_count = len(content.split()),
+                metadata    = {
+                    'document_id': document_id,
+                    'page_number': page_number,
+                    'chunk_index': idx,
+                    'start_index': doc.metadata.get('start_index', 0),
+                },
+            ))
 
-                # Keep overlap: last N words carried into next chunk
-                overlap_text = ' '.join(' '.join(current).split()[-self.chunk_overlap:])
-                current      = [overlap_text] if overlap_text else []
-                current_len  = len(overlap_text.split())
-
-            current.append(sentence)
-            current_len += word_count
-
-        # Flush remaining
-        if current:
-            chunks.append(self._make_chunk(current, chunk_idx, page_number, document_id))
-
+        logger.info(
+            f'[Chunking] {document_id}: {len(lc_docs)} pages → '
+            f'{len(chunks)} chunks '
+            f'(size={self._splitter._chunk_size} chars, '
+            f'overlap={self._splitter._chunk_overlap} chars)'
+        )
         return chunks
 
-    def _make_chunk(
-        self,
-        sentences:   list[str],
-        chunk_index: int,
-        page_number: int,
-        document_id: str,
-    ) -> Chunk:
-        content     = ' '.join(sentences).strip()
-        word_count  = len(content.split())
-        return Chunk(
-            chunk_index = chunk_index,
-            content     = content,
-            page_number = page_number,
-            token_count = word_count,
-            metadata    = {
-                'document_id': document_id,
-                'page_number': page_number,
-                'chunk_index': chunk_index,
-            },
+    def chunk_text(self, text: str, document_id: str, page_number: int = 1) -> list[Chunk]:
+        """Chunk a single text string (utility method)."""
+        return self.chunk_document(
+            [{'page_number': page_number, 'text': text}],
+            document_id,
         )
 
-    def _split_sentences(self, text: str) -> list[str]:
+    def split_for_summary(self, text: str, max_chunk_size: int = 4000) -> list[str]:
         """
-        Split text into sentences using regex.
-        Handles: periods, exclamation marks, question marks.
-        Avoids splitting on: Mr., Dr., abbreviations, decimals.
+        Split text into larger chunks for summarisation.
+        Larger chunks = fewer LLM calls for hierarchical summarisation.
         """
-        # Basic sentence splitter — handles most English text
-        sentence_end = re.compile(r'(?<=[.!?])\s+(?=[A-Z])')
-        sentences    = sentence_end.split(text)
-        # Clean empty strings
-        return [s.strip() for s in sentences if s.strip()]
-
-    def _hard_split(self, text: str) -> list[str]:
-        """Split oversized text by word count when no sentence boundary exists."""
-        words  = text.split()
-        chunks = []
-        for i in range(0, len(words), self.chunk_size):
-            chunk = ' '.join(words[i:i + self.chunk_size])
-            chunks.append(chunk)
-        return chunks
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size    = max_chunk_size,
+            chunk_overlap = 200,
+            separators    = ['\n\n', '\n', '. ', ' ', ''],
+        )
+        return [doc.page_content for doc in splitter.create_documents([text])]
 
 
 chunking_service = ChunkingService()
