@@ -161,7 +161,7 @@ from app.models.permission import Permission
 from app.models.image import Image, ImageCategory
 
 # Import routers
-from app.routers import (
+from app.api import (
     employee, auth, user, 
     role, permission,image_category, image, 
     house_price_model   # Added house_price_model router
