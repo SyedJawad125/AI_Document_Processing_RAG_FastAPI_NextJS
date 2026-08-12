@@ -1,25 +1,42 @@
-# app/schemas/base.py
-"""Base schemas for common fields"""
-from pydantic import BaseModel
+"""
+app/schemas/base.py
+────────────────────
+Base Pydantic schemas reused across the project.
+"""
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional, Generic, TypeVar
+from pydantic import BaseModel, ConfigDict
+
+T = TypeVar('T')
 
 
-class TimeStampSchema(BaseModel):
-    """Schema for timestamp fields"""
+class BaseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TimestampSchema(BaseSchema):
     created_at: datetime
     updated_at: datetime
-    deleted: bool
-    deleted_at: Optional[datetime] = None
 
 
-class UserStampSchema(BaseModel):
-    """Schema for user tracking fields"""
-    created_by_user_id: Optional[int] = None
-    updated_by_user_id: Optional[int] = None
-    deleted_by_user_id: Optional[int] = None
+class SuccessResponse(BaseModel):
+    success: bool = True
+    data:    Any  = None
+    message: Optional[str] = None
+    count:   Optional[int] = None
 
 
-class TimeUserStampSchema(TimeStampSchema, UserStampSchema):
-    """Combined schema for both timestamps and user stamps"""
-    pass
+class ErrorDetail(BaseModel):
+    code:    str
+    message: str
+
+
+class ErrorResponse(BaseModel):
+    success: bool = False
+    error:   ErrorDetail
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    success: bool = True
+    data:    list[T]
+    pagination: dict
