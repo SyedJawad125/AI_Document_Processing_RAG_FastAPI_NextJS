@@ -420,7 +420,12 @@ class Company(BaseModelMixin, Base):
 # ═════════════════════════════════════════════════════════════════════
 
 
-class Permission(UUIDMixin, Base):
+# ═════════════════════════════════════════════════════════════════════
+# Permission
+# ═════════════════════════════════════════════════════════════════════
+
+
+class Permission(UUIDMixin, TimeStampMixin, Base):
     __tablename__ = "permissions"
 
     name = Column(
@@ -451,12 +456,6 @@ class Permission(UUIDMixin, Base):
         default="",
     )
 
-    created_at = Column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False,
-    )
-
     # Relationships
 
     roles = relationship(
@@ -467,8 +466,7 @@ class Permission(UUIDMixin, Base):
 
     def __repr__(self):
         return f"<Permission {self.code_name}>"
-
-
+    
 # ═════════════════════════════════════════════════════════════════════
 # Role
 # ═════════════════════════════════════════════════════════════════════
