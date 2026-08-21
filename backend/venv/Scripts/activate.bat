@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=D:\Next Applications\FastApi Project\FastApi_Hrm\venv
+set VIRTUAL_ENV=D:\12. Django and Next JS\FastApi and Next JS\7. AI Document Processing Rag FastAPI NextJS\backend\venv
 
 if not defined PROMPT set PROMPT=$P$G
 
