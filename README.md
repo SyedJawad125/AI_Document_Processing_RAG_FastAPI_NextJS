@@ -1,4 +1,4 @@
-# 🤖 AI Document Processing & RAG System
+<!-- # 🤖 AI Document Processing & RAG System
 
 A production-style **AI Document Processing and Retrieval-Augmented Generation (RAG) system** built with **FastAPI, PostgreSQL, pgvector, LangChain, Groq, OCR, SentenceTransformers, and Docker**.
 
@@ -1176,4 +1176,691 @@ This project is built to demonstrate practical experience in:
 
 **Backend Engineering + Generative AI + RAG + LLM Applications + Vector Search + Document Intelligence**
 
-It is intentionally designed as a production-style learning project rather than a simple tutorial application.
+It is intentionally designed as a production-style learning project rather than a simple tutorial application. -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 🤖 AI Document Processing & RAG System
+
+<div align="center">
+
+![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791?style=for-the-badge&logo=postgresql&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-0.3-1C3C3C?style=for-the-badge&logo=chainlink&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-0.4-FF6B35?style=for-the-badge)
+![Groq](https://img.shields.io/badge/Groq-LLaMA_3.1-F55036?style=for-the-badge)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+
+**Production-style AI Document Intelligence Platform**
+
+Upload PDFs → Extract Text → OCR → Chunk → Embed → RAG Q&A → Summarize → Extract → Report
+
+[Features](#-key-features) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [API Docs](#-api-endpoints) • [Tech Stack](#-tech-stack)
+
+</div>
+
+---
+
+## 📌 About
+
+A **production-style AI Document Processing and RAG (Retrieval-Augmented Generation) system** built with FastAPI, PostgreSQL + pgvector, LangChain, LangGraph, Groq LLM, OCR, and SentenceTransformers.
+
+The system lets users upload PDF documents, automatically extracts and processes text (including OCR for scanned documents), generates semantic embeddings stored in PostgreSQL using pgvector, and enables intelligent question answering with page-level citations, AI summaries, structured data extraction, and downloadable PDF reports.
+
+Built as both a **real-world AI backend application** and an **interview preparation project** for Python Backend, FastAPI, Generative AI, LLM, RAG, and AI Engineering roles.
+
+---
+
+## ✨ Key Features
+
+| Feature | Description |
+|---|---|
+| 📄 PDF Upload | File validation, size check, async processing |
+| 🔍 Text Extraction | PyMuPDF for text-based PDFs |
+| 🖼️ OCR | Tesseract for scanned/image-based PDFs |
+| ✂️ Smart Chunking | LangChain RecursiveCharacterTextSplitter with overlap |
+| 🧠 Embeddings | sentence-transformers/all-MiniLM-L6-v2 (384-dim, local) |
+| 🗄️ Vector Store | PostgreSQL + pgvector with HNSW index |
+| 🔗 RAG Pipeline | LangChain LCEL chains + LangGraph CRAG agent |
+| 🤖 LLM | Groq API (llama-3.1-8b-instant) — fast inference |
+| 🔎 Semantic Search | Cosine similarity via pgvector |
+| 💬 Q&A | Context-aware answers with page citations |
+| 📝 Summarization | Hierarchical AI summarization |
+| 📦 Extraction | Structured JSON field extraction with Pydantic |
+| 📑 Reports | Downloadable PDF reports via ReportLab |
+| 🔐 Auth | JWT authentication + role-based permissions |
+| ⚡ Async | FastAPI BackgroundTasks for non-blocking processing |
+| 🐳 Docker | Full Docker + Docker Compose setup |
+
+---
+
+## 🏗️ Architecture
+
+```
+                      ┌─────────────────────┐
+                      │        Client        │
+                      └──────────┬──────────┘
+                                 │  REST API
+                                 ▼
+                      ┌─────────────────────┐
+                      │       FastAPI        │
+                      │  (Async REST APIs)   │
+                      └──────────┬──────────┘
+                                 │
+          ┌──────────────────────┼────────────────────┐
+          │                      │                    │
+          ▼                      ▼                    ▼
+  ┌──────────────┐      ┌──────────────┐     ┌──────────────┐
+  │  PDF / OCR   │      │  PostgreSQL  │     │   Groq LLM   │
+  │  Processing  │      │  + pgvector  │     │  (LangChain) │
+  └──────┬───────┘      └──────┬───────┘     └──────┬───────┘
+         │                     │                    │
+         ▼                     ▼                    │
+  ┌──────────────┐      ┌──────────────┐            │
+  │   Chunking   │      │  Embeddings  │            │
+  │  (LangChain) │      │    stored    │            │
+  └──────┬───────┘      └──────┬───────┘            │
+         │                     │                    │
+         └──────────┬──────────┘                    │
+                    ▼                               │
+          ┌──────────────────┐                      │
+          │    LangGraph     │◄─────────────────────┘
+          │   CRAG Agent     │
+          │ retrieve → grade │
+          │ rewrite → answer │
+          └────────┬─────────┘
+                   ▼
+          ┌──────────────────┐
+          │  Answer          │
+          │  + Citations     │
+          │  + Page Numbers  │
+          └──────────────────┘
+```
+
+---
+
+## 🔄 Document Processing Pipeline
+
+```
+PDF Upload
+     │
+     ▼
+File Validation (type + size)
+     │
+     ▼
+PDF Text Extraction (PyMuPDF)
+     │
+     ▼
+Is text sufficient? (>50 chars/page)
+     │
+  ┌──┴─────────────┐
+  YES               NO
+  │                 │
+  │                 ▼
+  │           OCR (Tesseract)
+  │           Image preprocessing
+  │           Text extraction
+  │                 │
+  └──────┬──────────┘
+         ▼
+    Text Cleaning
+         │
+         ▼
+    LangChain Chunking
+    (size=800, overlap=150)
+         │
+         ▼
+    Embedding Generation
+    (all-MiniLM-L6-v2)
+         │
+         ▼
+    PostgreSQL + pgvector
+    (HNSW index)
+         │
+         ▼
+    Document → READY ✅
+```
+
+---
+
+## 🧠 LangGraph CRAG Agent
+
+```
+User Question
+      │
+      ▼
+  [retrieve]
+  pgvector search
+      │
+      ▼
+  [grade_docs]
+  LLM grades each chunk
+  for relevance (0-1 score)
+      │
+   ┌──┴──────────────┐
+Good docs          Poor docs
+   │                  │
+   │              [rewrite_query]
+   │              LLM rewrites
+   │              for better search
+   │                  │
+   │              [retrieve]
+   │              second attempt
+   │                  │
+   └──────┬───────────┘
+          ▼
+     [generate]
+     Build context
+     Groq LLM
+     Answer + Citations
+          │
+          ▼
+    Final Response
+    + Page Citations
+```
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **API Framework** | FastAPI 0.115, Uvicorn, Pydantic v2 |
+| **Database** | PostgreSQL 16, pgvector, SQLAlchemy 2.0 async |
+| **Migrations** | Alembic |
+| **LLM** | Groq API (llama-3.1-8b-instant) |
+| **AI Orchestration** | LangChain 0.3, LangGraph 0.4 |
+| **Embeddings** | sentence-transformers/all-MiniLM-L6-v2 (local) |
+| **PDF Extraction** | PyMuPDF (fitz) |
+| **OCR** | Tesseract + pytesseract + OpenCV |
+| **Report Generation** | ReportLab |
+| **Auth** | JWT (python-jose) + bcrypt |
+| **Infrastructure** | Docker, Docker Compose |
+| **Testing** | Pytest, pytest-asyncio |
+
+---
+
+## 📂 Project Structure
+
+```
+backend/
+│
+├── app/
+│   ├── main.py                        ← FastAPI app entry point
+│   │
+│   ├── agents/
+│   │   ├── rag_agent.py               ← LangGraph CRAG agent
+│   │   └── document_agent.py          ← Multi-tool document agent
+│   │
+│   ├── api/v1/
+│   │   ├── auth.py                    ← Register, login, OTP, reset
+│   │   ├── documents.py               ← Upload, list, status, delete
+│   │   ├── search.py                  ← Vector similarity search
+│   │   ├── chat.py                    ← RAG Q&A + agent endpoints
+│   │   ├── extraction.py              ← Structured JSON extraction
+│   │   ├── reports.py                 ← PDF report download
+│   │   └── users.py                   ← Users, roles, permissions
+│   │
+│   ├── core/
+│   │   ├── config.py                  ← All settings from .env
+│   │   ├── security.py                ← JWT + password hashing
+│   │   ├── exceptions.py              ← Custom exceptions + handlers
+│   │   ├── langchain_setup.py         ← LangChain/Groq singletons
+│   │   └── logging.py                 ← Structured logging
+│   │
+│   ├── db/
+│   │   └── database.py                ← Async SQLAlchemy engine
+│   │
+│   ├── models/
+│   │   ├── user.py                    ← User, Role, Permission, Company
+│   │   ├── document.py                ← Document, Page, Chunk (pgvector)
+│   │   ├── associations.py            ← Many-to-many tables
+│   │   └── mixins.py                  ← UUID, timestamp, soft-delete
+│   │
+│   ├── schemas/
+│   │   ├── auth.py                    ← Login, register, OTP schemas
+│   │   ├── document.py                ← Upload, search, chat schemas
+│   │   ├── user.py                    ← User, role, company schemas
+│   │   └── base.py                    ← Base response schemas
+│   │
+│   ├── repositories/
+│   │   ├── document_repository.py     ← Document DB queries
+│   │   └── user_repository.py         ← User/role/company queries
+│   │
+│   ├── services/
+│   │   ├── pdf_service.py             ← PyMuPDF text extraction
+│   │   ├── ocr_service.py             ← Tesseract OCR
+│   │   ├── chunking_service.py        ← LangChain text splitter
+│   │   ├── embedding_service.py       ← sentence-transformers
+│   │   ├── vector_search_service.py   ← pgvector cosine search
+│   │   ├── llm_service.py             ← LangChain LCEL chains
+│   │   ├── rag_service.py             ← RAG pipeline orchestrator
+│   │   ├── summary_service.py         ← Hierarchical summarization
+│   │   ├── extraction_service.py      ← Structured field extraction
+│   │   ├── report_service.py          ← ReportLab PDF generation
+│   │   └── auth_service.py            ← Auth business logic
+│   │
+│   ├── dependencies/
+│   │   ├── auth.py                    ← get_current_user
+│   │   └── permission.py              ← require_permission()
+│   │
+│   ├── utils/
+│   │   ├── response.py                ← success_response helper
+│   │   └── file_utils.py              ← File validation utilities
+│   │
+│   └── workers/
+│       └── document_worker.py         ← Async processing pipeline
+│
+├── migrations/                        ← Alembic migration files
+├── tests/                             ← Pytest test suite
+├── uploads/                           ← Uploaded PDF files
+├── reports/                           ← Generated PDF reports
+│
+├── init_db.py                         ← DB init + HNSW index
+├── add_permissions.py                 ← Seed permission codes
+├── populate.py                        ← Seed admin user + roles
+├── start.py                           ← Dev/prod server launcher
+│
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── .env.example
+├── alembic.ini
+└── .gitignore
+```
+
+---
+
+## 🚀 Quick Start
+
+### With Docker
+
+```bash
+# 1. Clone repository
+git clone https://github.com/YOUR_USERNAME/ai-document-processing.git
+cd ai-document-processing
+
+# 2. Setup environment
+cp .env.example .env
+# Edit .env → add your GROQ_API_KEY
+
+# 3. Start services
+docker compose up --build
+
+# 4. Initialize database (run once)
+docker exec ai_doc_api python init_db.py
+docker exec ai_doc_api python add_permissions.py
+docker exec ai_doc_api python populate.py
+
+# 5. Open API docs
+# http://localhost:8000/api/docs
+```
+
+### Without Docker (Local)
+
+```bash
+# 1. Create virtual environment
+python -m venv venv
+venv\Scripts\activate        # Windows
+source venv/bin/activate     # Mac/Linux
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Setup PostgreSQL
+# Create database: document_ai
+# Run: CREATE EXTENSION IF NOT EXISTS vector;
+
+# 4. Update .env
+# Set POSTGRES_HOST=localhost
+
+# 5. Run migrations
+alembic revision --autogenerate -m "initial"
+alembic upgrade head
+
+# 6. Seed database
+python init_db.py
+python add_permissions.py
+python populate.py
+
+# 7. Start server
+python start.py
+```
+
+**Default login after populate.py:**
+```
+Email:    admin@documentai.com
+Password: Admin@123456
+```
+
+---
+
+## 🌐 API Endpoints
+
+### Authentication
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/v1/auth/register` | Create account |
+| POST | `/api/v1/auth/login` | Login → JWT tokens |
+| POST | `/api/v1/auth/refresh` | Refresh access token |
+| POST | `/api/v1/auth/logout` | Logout |
+| POST | `/api/v1/auth/forgot-password` | Send 6-digit OTP |
+| POST | `/api/v1/auth/verify-otp` | Verify OTP |
+| POST | `/api/v1/auth/reset-password` | Reset password |
+| POST | `/api/v1/auth/change-password` | Change password |
+
+### Documents
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/v1/documents/upload` | Upload PDF (async processing) |
+| GET | `/api/v1/documents/` | List documents |
+| GET | `/api/v1/documents/{id}` | Document detail |
+| GET | `/api/v1/documents/{id}/status` | Processing status + progress |
+| DELETE | `/api/v1/documents/{id}` | Soft delete |
+| POST | `/api/v1/documents/{id}/summary` | Generate AI summary |
+
+### AI Features
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/v1/search/` | Vector similarity search |
+| POST | `/api/v1/chat/` | RAG Q&A (auto mode) |
+| POST | `/api/v1/chat/agent` | LangGraph CRAG agent (grade + rewrite) |
+| POST | `/api/v1/chat/simple` | Simple RAG (fast) |
+| POST | `/api/v1/chat/ask` | Multi-tool agent (auto-classifies intent) |
+| POST | `/api/v1/extraction/{id}` | Extract structured JSON fields |
+| GET | `/api/v1/reports/{id}` | Download PDF report |
+
+### Users & Admin
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/v1/users/me` | Current user profile |
+| PATCH | `/api/v1/users/me` | Update profile |
+| GET | `/api/v1/users/permissions/` | List all permissions |
+| GET | `/api/v1/users/roles/` | List roles |
+| POST | `/api/v1/users/roles/` | Create role |
+| GET | `/api/v1/users/companies/` | List companies |
+| POST | `/api/v1/users/companies/` | Create company |
+
+---
+
+## 💡 API Examples
+
+### Upload a PDF
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/upload \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@report.pdf"
+```
+
+### Ask a Question (CRAG Agent)
+```bash
+curl -X POST http://localhost:8000/api/v1/chat/agent \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "document_id": "your-doc-uuid",
+    "question": "What was the revenue in 2025?",
+    "top_k": 5
+  }'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "question": "What was the revenue in 2025?",
+    "answer": "The revenue in 2025 was $14.2 million. [Page 12]",
+    "mode": "crag",
+    "iterations": 1,
+    "query_rewritten": false,
+    "citations": [
+      {
+        "chunk_id": "uuid",
+        "filename": "report.pdf",
+        "page_number": 12
+      }
+    ]
+  }
+}
+```
+
+### Extract Structured Fields
+```bash
+curl -X POST http://localhost:8000/api/v1/extraction/your-doc-uuid \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fields": ["company_name", "revenue", "employees", "founded_year"]
+  }'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "fields": {
+      "company_name": { "value": "Acme Corp",    "status": "found" },
+      "revenue":      { "value": "$14.2 million", "status": "found" },
+      "employees":    { "value": 350,             "status": "found" },
+      "founded_year": { "value": null,            "status": "not_found" }
+    }
+  }
+}
+```
+
+---
+
+## ⚙️ Environment Variables
+
+```env
+# App
+APP_NAME=AI Document Processing System
+ENVIRONMENT=development
+DEBUG=True
+SECRET_KEY=your-random-secret-key
+
+# Database
+DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/document_ai
+SYNC_DATABASE_URL=postgresql+psycopg://postgres:password@localhost:5432/document_ai
+
+# Groq LLM (get free key at console.groq.com)
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=llama-3.1-8b-instant
+
+# Embeddings (local — no API key needed)
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+EMBEDDING_DIMENSION=384
+
+# RAG
+CHUNK_SIZE=800
+CHUNK_OVERLAP=150
+TOP_K=5
+
+# LangGraph Agent
+USE_AGENT_MODE=True
+MAX_AGENT_ITERATIONS=5
+GRADING_THRESHOLD=0.6
+ENABLE_QUERY_REWRITE=True
+```
+
+---
+
+## 🗄️ Database Schema
+
+```
+users              roles              permissions
+──────────         ──────────         ───────────
+id (UUID)          id (UUID)          id (UUID)
+email              name               name
+password_hash      code_name          code_name
+first_name         description        module_name
+last_name          created_at         description
+role_id ──────────►
+company_id         role_permissions (many-to-many)
+
+companies          documents          document_pages
+──────────         ──────────         ──────────────
+id (UUID)          id (UUID)          id (UUID)
+name               user_id            document_id
+slug               filename           page_number
+subscription_plan  file_path          text
+is_active          file_size          extraction_method
+                   status             ocr_confidence
+                   progress
+                   page_count         document_chunks
+                                      ──────────────
+                                      id (UUID)
+                                      document_id
+                                      page_id
+                                      chunk_index
+                                      content
+                                      embedding VECTOR(384) ← pgvector
+                                      page_number
+                                      metadata (JSON)
+```
+
+---
+
+## 🧪 Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with output
+pytest -v
+
+# Run specific test file
+pytest tests/test_documents.py -v
+
+# Run with coverage
+pytest --cov=app tests/
+```
+
+---
+
+## 🔐 Security
+
+- JWT access tokens (10hr) + refresh tokens (15 days)
+- bcrypt password hashing
+- Role-based permission system
+- Users can only access their own documents
+- File type + size validation
+- Safe filename generation (UUID-based)
+- Path traversal protection
+- Environment-based secrets (never hardcoded)
+- CORS configuration
+- Global exception handling with consistent error format
+
+---
+
+## 📊 Alembic Migrations
+
+```bash
+# Create new migration after model changes
+alembic revision --autogenerate -m "description"
+
+# Apply all migrations
+alembic upgrade head
+
+# Rollback one step
+alembic downgrade -1
+
+# View history
+alembic history
+
+# View current version
+alembic current
+```
+
+---
+
+## 🎯 Interview Preparation
+
+This project covers the following topics commonly asked in AI/Backend interviews:
+
+**FastAPI:** async vs sync, dependency injection, background tasks, middleware, Pydantic v2
+
+**PostgreSQL:** transactions, indexes, connection pooling, relationships
+
+**pgvector:** cosine similarity, HNSW vs IVFFlat, vector indexing, why not FAISS
+
+**RAG:** chunking strategy, chunk overlap, embedding models, retrieval, hallucination reduction, evaluation
+
+**LangChain:** LCEL chains, prompt templates, retrievers, RAG chains, when to avoid it
+
+**LangGraph:** stateful agents, CRAG, conditional edges, node routing, loops
+
+**OCR:** scanned PDF detection, Tesseract, image preprocessing, accuracy improvement
+
+**Groq:** inference speed, temperature, context window, structured output, error handling
+
+**System Design:** 10,000 PDF processing, concurrent uploads, scaling, caching, monitoring
+
+---
+
+## 🗺️ Roadmap
+
+- [x] FastAPI + PostgreSQL + pgvector
+- [x] PDF extraction + OCR pipeline
+- [x] LangChain chunking + embeddings
+- [x] LangGraph CRAG agent
+- [x] Groq LLM integration
+- [x] Semantic search + RAG Q&A
+- [x] AI summarization + extraction
+- [x] PDF report generation
+- [x] JWT auth + role permissions
+- [x] Docker + Docker Compose
+- [ ] Redis caching
+- [ ] Celery background workers
+- [ ] Hybrid search (BM25 + vector)
+- [ ] Cross-encoder reranking
+- [ ] Streaming LLM responses
+- [ ] RAG evaluation dashboard
+- [ ] Multi-document RAG
+- [ ] Conversation memory
+
+---
+
+## 👨‍💻 Author
+
+**Syed Jawad Ali**
+
+Python Backend Developer | FastAPI | Django | Generative AI | LLM | RAG Systems
+
+---
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+---
+
+<div align="center">
+
+**⭐ Star this repo if you find it useful!**
+
+Built for learning, interviews, and production AI backend engineering.
+
+</div>
