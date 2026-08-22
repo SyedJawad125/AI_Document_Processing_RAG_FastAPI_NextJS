@@ -403,6 +403,7 @@ class Company(BaseModelMixin, Base):
         "User",
         back_populates="company",
         lazy="selectin",
+        foreign_keys="User.company_id",
     )
 
     documents = relationship(
@@ -505,6 +506,7 @@ class Role(BaseModelMixin, Base):
     users = relationship(
         "User",
         back_populates="role",
+        foreign_keys="User.role_id",
     )
 
     def __repr__(self):
@@ -705,18 +707,21 @@ class User(UUIDMixin, TimeStampMixin, SoftDeleteMixin, Base):
         "Role",
         back_populates="users",
         lazy="selectin",
+        foreign_keys="role_id",
     )
 
     company = relationship(
         "Company",
         back_populates="users",
         lazy="selectin",
+        foreign_keys="company_id",
     )
 
     employee = relationship(
         "Employee",
         back_populates="user",
         uselist=False,
+        foreign_keys="Employee.user_id",
     )
 
     tokens = relationship(
@@ -729,6 +734,7 @@ class User(UUIDMixin, TimeStampMixin, SoftDeleteMixin, Base):
         "Document",
         back_populates="owner",
         lazy="selectin",
+        foreign_keys="Document.user_id",
     )
 
     def __repr__(self):
@@ -782,6 +788,7 @@ class Employee(BaseModelMixin, Base):
     user = relationship(
         "User",
         back_populates="employee",
+        foreign_keys="user_id",
     )
 
     def __repr__(self):

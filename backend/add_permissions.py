@@ -155,18 +155,18 @@ async def add_permissions():
                 select(Permission).where(Permission.code_name == perm_data['code_name'])
             )
             if existing.scalar_one_or_none():
-                print(f'  ⏭  Exists: {perm_data["code_name"]}')
+                print(f'  Exists: {perm_data["code_name"]}')
                 continue
 
             perm = Permission(**perm_data)
             db.add(perm)
             added += 1
-            print(f'  ✅ Added: {perm_data["code_name"]}')
+            print(f'  Added: {perm_data["code_name"]}')
 
         await db.commit()
-        print(f'\n✅ Done — {added} permissions added, {len(PERMISSIONS) - added} already existed.')
+        print(f'\nDone — {added} permissions added, {len(PERMISSIONS) - added} already existed.')
 
 
 if __name__ == '__main__':
-    print('🔑 Adding permissions to database...\n')
+    print('Adding permissions to database...\n')
     asyncio.run(add_permissions())

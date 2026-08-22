@@ -26,9 +26,10 @@ from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.models.document import DocumentStatus
 from app.repositories.document_repository import DocumentRepository
-from app.services.summary_service import summary_service
-from app.services.report_service import report_service
-from app.workers.document_worker import document_worker
+# Temporarily disabled AI services due to dependency issues
+# from app.services.summary_service import summary_service
+# from app.services.report_service import report_service
+# from app.workers.document_worker import document_worker
 from app.core.config import settings
 from app.core.exceptions import (
     FileTooLargeError, UnsupportedFileTypeError, NotFoundError, ForbiddenError
@@ -93,8 +94,8 @@ async def upload_document(
     )
     await db.commit()
 
-    # Start processing in background
-    background_tasks.add_task(document_worker.process, doc_id, db)
+    # Start processing in background (temporarily disabled)
+    # background_tasks.add_task(document_worker.process, doc_id, db)
 
     return success_response({
         'document_id': doc_id,
@@ -226,7 +227,12 @@ async def generate_summary(
     if not document:
         raise NotFoundError('Document')
 
-    result = await summary_service.summarize(document_id, db)
+    # Temporarily disabled - return placeholder
+    # result = await summary_service.summarize(document_id, db)
+    return success_response({
+        'message': 'AI summary service temporarily disabled due to dependency issues',
+        'document_id': str(document_id),
+    })
 
     return success_response({
         'document_id':       result.document_id,
@@ -274,9 +280,14 @@ async def download_report(
         except Exception:
             pass
 
-    # Generate PDF
-    pdf_bytes   = report_service.generate_report(doc_info, summary=summary_data)
-    report_path = report_service.save_report(pdf_bytes, document_id)
+    # Generate PDF (temporarily disabled)
+    # pdf_bytes   = report_service.generate_report(doc_info, summary=summary_data)
+    # report_path = report_service.save_report(pdf_bytes, document_id)
+    
+    return success_response({
+        'message': 'Report generation temporarily disabled due to dependency issues',
+        'document_id': str(document_id),
+    })
 
     return FileResponse(
         path             = report_path,

@@ -75,10 +75,10 @@ cursor.execute('SELECT 1 FROM pg_database WHERE datname = %s', (db_name,))
 exists = cursor.fetchone()
 
 if exists:
-    print(f"✅ Database already exists!")
+    print(f"Database already exists!")
 else:
     cursor.execute(f'CREATE DATABASE "{db_name}"')
-    print(f"✅ Database created!")
+    print(f"Database created!")
 
 cursor.close()
 conn.close()
@@ -100,12 +100,12 @@ conn2.autocommit = True
 cursor2 = conn2.cursor()
 
 cursor2.execute('CREATE EXTENSION IF NOT EXISTS vector;')
-print("✅ pgvector extension enabled!")
+print("pgvector extension enabled!")
 
 cursor2.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
-print("✅ uuid-ossp extension enabled!")
+print("uuid-ossp extension enabled!")
 
 cursor2.close()
 conn2.close()
 
-print("\n🎉 All done! Now run: alembic revision --autogenerate -m 'initial migration'")
+print("\nAll done! Now run: alembic upgrade head")

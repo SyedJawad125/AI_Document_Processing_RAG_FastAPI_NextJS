@@ -338,6 +338,7 @@ class Document(BaseModelMixin, Base):
         "Company",
         back_populates="documents",
         lazy="selectin",
+        foreign_keys="company_id",
     )
 
     pages = relationship(

@@ -21,7 +21,7 @@ import structlog
 
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
-from app.api.v1 import auth, documents, search, chat, extraction, reports, users
+from app.api.v1 import auth, documents, search, chat, extraction, reports
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -95,7 +95,6 @@ register_exception_handlers(app)
 PREFIX = '/api/v1'
 
 app.include_router(auth.router,       prefix=f'{PREFIX}/auth',       tags=['Authentication'])
-app.include_router(users.router,      prefix=f'{PREFIX}/users',      tags=['Users & Roles'])
 app.include_router(documents.router,  prefix=f'{PREFIX}/documents',  tags=['Documents'])
 app.include_router(search.router,     prefix=f'{PREFIX}/search',     tags=['Search'])
 app.include_router(chat.router,       prefix=f'{PREFIX}/chat',       tags=['Chat / RAG'])

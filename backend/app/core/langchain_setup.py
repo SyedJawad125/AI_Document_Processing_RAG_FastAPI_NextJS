@@ -28,28 +28,36 @@ def get_llm():
     Primary ChatGroq LLM.
     temperature=0.1 → near-deterministic for factual Q&A.
     """
-    from langchain_groq import ChatGroq
-    return ChatGroq(
-        model       = settings.GROQ_MODEL,
-        api_key     = settings.GROQ_API_KEY,
-        temperature = 0.1,
-        max_tokens  = 2048,
-        timeout     = settings.GROQ_TIMEOUT,
-    )
+    try:
+        from langchain_groq import ChatGroq
+        return ChatGroq(
+            model       = settings.GROQ_MODEL,
+            api_key     = settings.GROQ_API_KEY,
+            temperature = 0.1,
+            max_tokens  = 2048,
+            timeout     = settings.GROQ_TIMEOUT,
+        )
+    except ImportError as e:
+        print(f"Warning: Could not import ChatGroq: {e}")
+        return None
 
 
 @lru_cache
 def get_summary_llm():
     """
     LLM tuned for summarisation — slightly more creative."""
-    from langchain_groq import ChatGroq
-    return ChatGroq(
-        model       = settings.GROQ_MODEL,
-        api_key     = settings.GROQ_API_KEY,
-        temperature = 0.3,
-        max_tokens  = 2048,
-        timeout     = settings.GROQ_TIMEOUT,
-    )
+    try:
+        from langchain_groq import ChatGroq
+        return ChatGroq(
+            model       = settings.GROQ_MODEL,
+            api_key     = settings.GROQ_API_KEY,
+            temperature = 0.3,
+            max_tokens  = 2048,
+            timeout     = settings.GROQ_TIMEOUT,
+        )
+    except ImportError as e:
+        print(f"Warning: Could not import ChatGroq: {e}")
+        return None
 
 
 @lru_cache
@@ -58,14 +66,18 @@ def get_json_llm():
     LLM for structured JSON output.
     temperature=0 → maximum consistency for extraction tasks.
     """
-    from langchain_groq import ChatGroq
-    return ChatGroq(
-        model       = settings.GROQ_MODEL,
-        api_key     = settings.GROQ_API_KEY,
-        temperature = 0.0,
-        max_tokens  = 2048,
-        timeout     = settings.GROQ_TIMEOUT,
-    )
+    try:
+        from langchain_groq import ChatGroq
+        return ChatGroq(
+            model       = settings.GROQ_MODEL,
+            api_key     = settings.GROQ_API_KEY,
+            temperature = 0.0,
+            max_tokens  = 2048,
+            timeout     = settings.GROQ_TIMEOUT,
+        )
+    except ImportError as e:
+        print(f"Warning: Could not import ChatGroq: {e}")
+        return None
 
 
 @lru_cache
@@ -75,12 +87,16 @@ def get_embeddings():
     No API key needed — runs locally.
     model_name must match EMBEDDING_DIMENSION in settings.
     """
-    from langchain_huggingface import HuggingFaceEmbeddings
-    return HuggingFaceEmbeddings(
-        model_name   = settings.EMBEDDING_MODEL,
-        model_kwargs = {'device': 'cpu'},
-        encode_kwargs = {'normalize_embeddings': True},
-    )
+    try:
+        from langchain_huggingface import HuggingFaceEmbeddings
+        return HuggingFaceEmbeddings(
+            model_name   = settings.EMBEDDING_MODEL,
+            model_kwargs = {'device': 'cpu'},
+            encode_kwargs = {'normalize_embeddings': True},
+        )
+    except ImportError as e:
+        print(f"Warning: Could not import HuggingFaceEmbeddings: {e}")
+        return None
 
 
 # ── Convenience singletons ─────────────────────────────────────────
