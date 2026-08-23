@@ -42,10 +42,25 @@ class DocumentRepository:
         page_size: int = 20
     ) -> Tuple[List[Document], int]:
         """Get all documents for a specific user with pagination."""
+        return await self.list_by_user(user_id, page, page_size)
+
+    async def list_by_user(
+        self, 
+        user_id: UUID | str,
+        page: int = 1,
+        page_size: int = 20,
+        status: str = None
+    ) -> Tuple[List[Document], int]:
+        """Get all documents for a specific user with pagination and optional status filter."""
         q = select(Document).where(
             Document.user_id == str(user_id),
             Document.deleted == False
-        ).order_by(Document.created_at.desc())
+        )
+        
+        if status:
+            q = q.where(Document.status == status)
+            
+        q = q.order_by(Document.created_at.desc())
 
         total = (await self.db.execute(
             select(func.count()).select_from(q.subquery())
