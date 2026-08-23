@@ -148,9 +148,13 @@ async def get_document(
     db:           AsyncSession = Depends(get_db),
 ):
     doc_repo = DocumentRepository(db)
-    document = await doc_repo.get_by_id(document_id, user_id=current_user.id)
+    document = await doc_repo.get_by_id(document_id)
     if not document:
         raise NotFoundError('Document')
+    
+    # Check if user has access to this document
+    if str(document.user_id) != str(current_user.id) and not current_user.is_superuser:
+        raise ForbiddenError('You do not have access to this document')
 
     return success_response({
         'id':             str(document.id),
@@ -177,9 +181,13 @@ async def document_status(
     db:           AsyncSession = Depends(get_db),
 ):
     doc_repo = DocumentRepository(db)
-    document = await doc_repo.get_by_id(document_id, user_id=current_user.id)
+    document = await doc_repo.get_by_id(document_id)
     if not document:
         raise NotFoundError('Document')
+    
+    # Check if user has access to this document
+    if str(document.user_id) != str(current_user.id) and not current_user.is_superuser:
+        raise ForbiddenError('You do not have access to this document')
 
     return success_response({
         'document_id': str(document.id),
@@ -202,11 +210,15 @@ async def delete_document(
     db:           AsyncSession = Depends(get_db),
 ):
     doc_repo = DocumentRepository(db)
-    document = await doc_repo.get_by_id(document_id, user_id=current_user.id)
+    document = await doc_repo.get_by_id(document_id)
     if not document:
         raise NotFoundError('Document')
+    
+    # Check if user has access to this document
+    if str(document.user_id) != str(current_user.id) and not current_user.is_superuser:
+        raise ForbiddenError('You do not have access to this document')
 
-    await doc_repo.soft_delete(document_id)
+    await doc_repo.delete(document_id)
     await db.commit()
     return success_response({'message': 'Document deleted.'})
 
@@ -223,9 +235,13 @@ async def generate_summary(
 ):
     """Generate AI summary using hierarchical summarization."""
     doc_repo = DocumentRepository(db)
-    document = await doc_repo.get_by_id(document_id, user_id=current_user.id)
+    document = await doc_repo.get_by_id(document_id)
     if not document:
         raise NotFoundError('Document')
+    
+    # Check if user has access to this document
+    if str(document.user_id) != str(current_user.id) and not current_user.is_superuser:
+        raise ForbiddenError('You do not have access to this document')
 
     # Temporarily disabled - return placeholder
     # result = await summary_service.summarize(document_id, db)
@@ -259,9 +275,13 @@ async def download_report(
 ):
     """Generate and download a PDF report."""
     doc_repo = DocumentRepository(db)
-    document = await doc_repo.get_by_id(document_id, user_id=current_user.id)
+    document = await doc_repo.get_by_id(document_id)
     if not document:
         raise NotFoundError('Document')
+    
+    # Check if user has access to this document
+    if str(document.user_id) != str(current_user.id) and not current_user.is_superuser:
+        raise ForbiddenError('You do not have access to this document')
 
     # Build report data
     doc_info = {
