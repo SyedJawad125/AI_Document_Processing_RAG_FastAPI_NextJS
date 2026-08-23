@@ -226,6 +226,153 @@ class ExtractionMethod(str, PyEnum):
 # ═════════════════════════════════════════════════════════════════════
 
 
+# class Document(BaseModelMixin, Base):
+#     __tablename__ = "documents"
+
+#     # ────────────────────────────────────────────────────────────────
+#     # Ownership / Multi-tenancy
+#     # ────────────────────────────────────────────────────────────────
+
+#     user_id = Column(
+#         UUID(as_uuid=True),
+#         ForeignKey(
+#             "users.id",
+#             ondelete="CASCADE",
+#         ),
+#         nullable=False,
+#         index=True,
+#     )
+
+#     company_id = Column(
+#         UUID(as_uuid=True),
+#         ForeignKey(
+#             "companies.id",
+#             ondelete="CASCADE",
+#         ),
+#         nullable=True,
+#         index=True,
+#     )
+
+#     # ────────────────────────────────────────────────────────────────
+#     # File information
+#     # ────────────────────────────────────────────────────────────────
+
+#     filename = Column(
+#         String(500),
+#         nullable=False,
+#     )
+
+#     original_filename = Column(
+#         String(500),
+#         nullable=False,
+#     )
+
+#     file_path = Column(
+#         String(1000),
+#         nullable=False,
+#     )
+
+#     file_size = Column(
+#         Integer,
+#         nullable=False,
+#     )
+
+#     mime_type = Column(
+#         String(100),
+#         nullable=False,
+#     )
+
+#     page_count = Column(
+#         Integer,
+#         nullable=True,
+#     )
+
+#     # ────────────────────────────────────────────────────────────────
+#     # Processing
+#     # ────────────────────────────────────────────────────────────────
+
+#     status = Column(
+#         Enum(DocumentStatus),
+#         default=DocumentStatus.UPLOADED,
+#         nullable=False,
+#         index=True,
+#     )
+
+#     processing_error = Column(
+#         Text,
+#         nullable=True,
+#     )
+
+#     progress = Column(
+#         Integer,
+#         default=0,
+#         nullable=False,
+#     )
+
+#     # ────────────────────────────────────────────────────────────────
+#     # AI-generated content
+#     # ────────────────────────────────────────────────────────────────
+
+#     ai_summary = Column(
+#         Text,
+#         nullable=True,
+#     )
+
+#     extracted_data = Column(
+#         JSON,
+#         nullable=True,
+#     )
+
+#     # ────────────────────────────────────────────────────────────────
+#     # Relationships
+#     # ────────────────────────────────────────────────────────────────
+
+#     owner = relationship(
+#         "User",
+#         back_populates="documents",
+#         foreign_keys=[user_id],
+#         lazy="selectin",
+#     )
+
+#     company = relationship(
+#         "Company",
+#         back_populates="documents",
+#         lazy="selectin",
+#         foreign_keys="company_id",
+#     )
+
+#     pages = relationship(
+#         "DocumentPage",
+#         back_populates="document",
+#         cascade="all, delete-orphan",
+#         order_by="DocumentPage.page_number",
+#     )
+
+#     chunks = relationship(
+#         "DocumentChunk",
+#         back_populates="document",
+#         cascade="all, delete-orphan",
+#     )
+
+#     def __repr__(self):
+#         return (
+#             f"<Document "
+#             f"{self.original_filename} "
+#             f"status={self.status}>"
+#         )
+
+#     @property
+#     def is_ready(self) -> bool:
+#         return self.status == DocumentStatus.READY
+
+#     @property
+#     def file_size_mb(self) -> float:
+#         return round(
+#             self.file_size / (1024 * 1024),
+#             2,
+#         )
+
+
 class Document(BaseModelMixin, Base):
     __tablename__ = "documents"
 
@@ -324,21 +471,21 @@ class Document(BaseModelMixin, Base):
     )
 
     # ────────────────────────────────────────────────────────────────
-    # Relationships
+    # Relationships - FIXED
     # ────────────────────────────────────────────────────────────────
 
     owner = relationship(
         "User",
         back_populates="documents",
-        foreign_keys=[user_id],
+        foreign_keys=[user_id],  # ✅ Use list with column object
         lazy="selectin",
     )
 
     company = relationship(
         "Company",
         back_populates="documents",
+        foreign_keys=[company_id],  # ✅ Use list with column object
         lazy="selectin",
-        foreign_keys="company_id",
     )
 
     pages = relationship(

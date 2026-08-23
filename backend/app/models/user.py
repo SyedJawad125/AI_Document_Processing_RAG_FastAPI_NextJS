@@ -768,17 +768,30 @@ class User(UUIDMixin, TimeStampMixin, SoftDeleteMixin, Base):
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships — foreign_keys must use "ClassName.column_name" format
+    # role = relationship(
+    #     "Role",
+    #     back_populates="users",
+    #     lazy="selectin",
+    #     foreign_keys="[User.role_id]",       # ✅ Fixed
+    # )
+    # company = relationship(
+    #     "Company",
+    #     back_populates="users",
+    #     lazy="selectin",
+    #     foreign_keys="[User.company_id]",    # ✅ Fixed
+    # )
     role = relationship(
-        "Role",
-        back_populates="users",
-        lazy="selectin",
-        foreign_keys="[User.role_id]",       # ✅ Fixed
+    "Role",
+    back_populates="users",
+    lazy="selectin",
+    foreign_keys=[role_id],  # ✅ Use list with column
     )
+
     company = relationship(
         "Company",
         back_populates="users",
         lazy="selectin",
-        foreign_keys="[User.company_id]",    # ✅ Fixed
+        foreign_keys=[company_id],  # ✅ Use list with column
     )
     employee = relationship(
         "Employee",
