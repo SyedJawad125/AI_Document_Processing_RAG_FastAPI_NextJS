@@ -144,7 +144,7 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
 
     # Build role and permissions data
     role_data = None
-    permissions_data = []
+    permissions_list = []
     
     if user.role:
         role_data = {
@@ -155,17 +155,7 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
         }
         
         if user.role.permissions:
-            permissions_data = [
-                {
-                    'id': str(perm.id),
-                    'name': perm.name,
-                    'code_name': perm.code_name,
-                    'module_name': perm.module_name,
-                    'module_label': perm.module_label,
-                    'description': perm.description
-                }
-                for perm in user.role.permissions
-            ]
+            permissions_list = [perm.name for perm in user.role.permissions]
 
     return success_response({
         'user': {
@@ -175,7 +165,6 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
             'type':       user.type,
             'company_id': str(user.company_id) if user.company_id else None,
             'role':       role_data,
-            'permissions': permissions_data,
         },
         'tokens': {
             'access_token':  access_token,
@@ -183,6 +172,7 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
             'token_type':    'bearer',
             'expires_in':    settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         },
+        'permissions': permissions_list,
     })
 
 
