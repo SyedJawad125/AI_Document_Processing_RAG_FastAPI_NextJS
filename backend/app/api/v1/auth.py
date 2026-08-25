@@ -155,7 +155,7 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
         }
         
         if user.role.permissions:
-            permissions_list = [perm.name for perm in user.role.permissions]
+            permissions_list = [perm.code_name for perm in user.role.permissions]
 
     return success_response({
         'user': {
