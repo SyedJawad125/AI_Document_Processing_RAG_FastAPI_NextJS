@@ -98,9 +98,16 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
 
 @router.post('/login')
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
-    """Authenticate user and return access + refresh tokens."""
+    """Authenticate user and return access + refresh tokens with role and permissions."""
 
-    result = await db.execute(select(User).where(User.email == payload.email, User.deleted == False))
+    from sqlalchemy.orm import selectinload
+    from app.models.user import Role, Permission
+
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.role).selectinload(Role.permissions))
+        .where(User.email == payload.email, User.deleted == False)
+    )
     user   = result.scalar_one_or_none()
 
     if not user:
@@ -135,6 +142,31 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     db.add(token_record)
     await db.commit()
 
+    # Build role and permissions data
+    role_data = None
+    permissions_data = []
+    
+    if user.role:
+        role_data = {
+            'id': str(user.role.id),
+            'name': user.role.name,
+            'code_name': user.role.code_name,
+            'description': user.role.description
+        }
+        
+        if user.role.permissions:
+            permissions_data = [
+                {
+                    'id': str(perm.id),
+                    'name': perm.name,
+                    'code_name': perm.code_name,
+                    'module_name': perm.module_name,
+                    'module_label': perm.module_label,
+                    'description': perm.description
+                }
+                for perm in user.role.permissions
+            ]
+
     return success_response({
         'user': {
             'id':         str(user.id),
@@ -142,6 +174,8 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
             'full_name':  user.full_name,
             'type':       user.type,
             'company_id': str(user.company_id) if user.company_id else None,
+            'role':       role_data,
+            'permissions': permissions_data,
         },
         'tokens': {
             'access_token':  access_token,
