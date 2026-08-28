@@ -202,18 +202,26 @@ class LLMService:
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=10))
     async def summarize_chunks(self, chunks_text: str) -> str:
         try:
+            if summary_llm is None:
+                logger.error('[LLM] summary_llm is None - check GROQ_API_KEY')
+                raise LLMError('LLM not initialized. Check GROQ_API_KEY in .env')
             return await chunk_summary_chain.ainvoke({'text': chunks_text})
         except Exception as e:
+            logger.error(f'[LLM] summarize_chunks error: {e}')
             raise LLMError(str(e))
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=10))
     async def final_summary(self, combined_summaries: str, filename: str) -> dict:
         try:
+            if json_llm is None:
+                logger.error('[LLM] json_llm is None - check GROQ_API_KEY')
+                raise LLMError('LLM not initialized. Check GROQ_API_KEY in .env')
             return await final_summary_chain.ainvoke({
                 'combined_summaries': combined_summaries,
                 'filename':           filename,
             })
         except Exception as e:
+            logger.error(f'[LLM] final_summary error: {e}')
             raise LLMError(str(e))
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=10))
