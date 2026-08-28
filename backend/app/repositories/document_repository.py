@@ -21,18 +21,19 @@ class DocumentRepository:
 
     # ── Document CRUD ────────────────────────────────────────────────
 
-    async def get_by_id(self, document_id: UUID | str) -> Optional[Document]:
+    async def get_by_id(self, document_id: UUID | str, user_id: UUID | str = None) -> Optional[Document]:
         """Get a document by ID with all relationships loaded."""
-        result = await self.db.execute(
-            select(Document)
-            .options(
-                selectinload(Document.pages),
-                selectinload(Document.chunks),
-                selectinload(Document.owner),
-                selectinload(Document.company)
-            )
-            .where(Document.id == str(document_id), Document.deleted == False)
-        )
+        q = select(Document).options(
+            selectinload(Document.pages),
+            selectinload(Document.chunks),
+            selectinload(Document.owner),
+            selectinload(Document.company)
+        ).where(Document.id == str(document_id), Document.deleted == False)
+        
+        if user_id:
+            q = q.where(Document.user_id == str(user_id))
+        
+        result = await self.db.execute(q)
         return result.scalar_one_or_none()
 
     async def get_by_user(
