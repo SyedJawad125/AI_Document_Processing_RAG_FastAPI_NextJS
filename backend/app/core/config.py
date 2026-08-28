@@ -160,6 +160,9 @@ class Settings(BaseSettings):
     GROQ_MODEL:   str = 'llama-3.1-8b-instant'
     GROQ_TIMEOUT: int = 60
 
+    # ── LangChain API (if needed for other services) ───────────────
+    LANGCHAIN_API_KEY: str = ''
+
     # ── Embeddings ─────────────────────────────────────────────────
     EMBEDDING_MODEL:     str = 'sentence-transformers/all-MiniLM-L6-v2'
     EMBEDDING_DIMENSION: int = 384
