@@ -21,15 +21,14 @@ from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.database import get_db
+from app.db.database import get_db, AsyncSessionLocal
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.models.document import DocumentStatus
 from app.repositories.document_repository import DocumentRepository
-# Temporarily disabled AI services due to dependency issues
-# from app.services.summary_service import summary_service
-# from app.services.report_service import report_service
-# from app.workers.document_worker import document_worker
+from app.services.summary_service import summary_service
+from app.services.report_service import report_service
+from app.workers.document_worker import document_worker
 from app.core.config import settings
 from app.core.exceptions import (
     FileTooLargeError, UnsupportedFileTypeError, NotFoundError, ForbiddenError
@@ -40,6 +39,19 @@ router = APIRouter()
 
 ALLOWED_TYPES = {'application/pdf', 'application/x-pdf'}
 ALLOWED_EXTS  = {'.pdf'}
+
+
+# ─────────────────────────────────────────────────────────────────
+#  Background Task Helper
+# ─────────────────────────────────────────────────────────────────
+
+async def process_document_background(document_id: str):
+    """
+    Background task wrapper that creates a new database session.
+    FastAPI BackgroundTasks cannot use the request's db session.
+    """
+    async with AsyncSessionLocal() as db:
+        await document_worker.process(document_id, db)
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -94,8 +106,9 @@ async def upload_document(
     )
     await db.commit()
 
-    # Start processing in background (temporarily disabled)
-    # background_tasks.add_task(document_worker.process, doc_id, db)
+    # Start processing in background
+    # Note: We pass document_id only, not db session, to avoid session issues
+    background_tasks.add_task(process_document_background, doc_id)
 
     return success_response({
         'document_id': doc_id,
@@ -243,13 +256,7 @@ async def generate_summary(
     if str(document.user_id) != str(current_user.id) and not current_user.is_superuser:
         raise ForbiddenError('You do not have access to this document')
 
-    # Temporarily disabled - return placeholder
-    # result = await summary_service.summarize(document_id, db)
-    return success_response({
-        'message': 'AI summary service temporarily disabled due to dependency issues',
-        'document_id': str(document_id),
-    })
-
+    result = await summary_service.summarize(document_id, db)
     return success_response({
         'document_id':       result.document_id,
         'filename':          result.filename,
@@ -300,15 +307,10 @@ async def download_report(
         except Exception:
             pass
 
-    # Generate PDF (temporarily disabled)
-    # pdf_bytes   = report_service.generate_report(doc_info, summary=summary_data)
-    # report_path = report_service.save_report(pdf_bytes, document_id)
+    # Generate PDF
+    pdf_bytes   = report_service.generate_report(doc_info, summary=summary_data)
+    report_path = report_service.save_report(pdf_bytes, document_id)
     
-    return success_response({
-        'message': 'Report generation temporarily disabled due to dependency issues',
-        'document_id': str(document_id),
-    })
-
     return FileResponse(
         path             = report_path,
         media_type       = 'application/pdf',
