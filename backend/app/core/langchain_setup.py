@@ -28,6 +28,9 @@ def get_llm():
     Primary ChatGroq LLM.
     temperature=0.1 → near-deterministic for factual Q&A.
     """
+    if not settings.GROQ_API_KEY:
+        print("Warning: GROQ_API_KEY is not set in .env file")
+        return None
     try:
         from langchain_groq import ChatGroq
         return ChatGroq(
@@ -46,6 +49,9 @@ def get_llm():
 def get_summary_llm():
     """
     LLM tuned for summarisation — slightly more creative."""
+    if not settings.GROQ_API_KEY:
+        print("Warning: GROQ_API_KEY is not set in .env file")
+        return None
     try:
         from langchain_groq import ChatGroq
         return ChatGroq(
@@ -66,6 +72,9 @@ def get_json_llm():
     LLM for structured JSON output.
     temperature=0 → maximum consistency for extraction tasks.
     """
+    if not settings.GROQ_API_KEY:
+        print("Warning: GROQ_API_KEY is not set in .env file")
+        return None
     try:
         from langchain_groq import ChatGroq
         return ChatGroq(
