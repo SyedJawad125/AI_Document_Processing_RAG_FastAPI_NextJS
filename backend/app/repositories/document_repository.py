@@ -224,6 +224,37 @@ class DocumentRepository:
         )
         return result.scalars().all()
 
+    async def get_chunks(
+        self,
+        document_id: UUID | str,
+    ) -> List[DocumentChunk]:
+        """Get all chunks for a document (alias for get_chunks_by_document)."""
+        chunks, _ = await self.get_chunks_by_document(document_id, page=1, page_size=10000)
+        return chunks
+
+    async def bulk_create_pages(self, pages_data: List[dict]) -> None:
+        """Bulk create document pages."""
+        from app.models.document import DocumentPage
+        for page_data in pages_data:
+            page = DocumentPage(**page_data)
+            self.db.add(page)
+        await self.db.flush()
+
+    async def bulk_create_chunks(self, chunks_data: List[dict]) -> None:
+        """Bulk create document chunks."""
+        from app.models.document import DocumentChunk
+        for chunk_data in chunks_data:
+            # Map 'metadata' to 'chunk_metadata' for the Python model
+            if 'metadata' in chunk_data and 'chunk_metadata' not in chunk_data:
+                chunk_data['chunk_metadata'] = chunk_data.pop('metadata')
+            chunk = DocumentChunk(**chunk_data)
+            self.db.add(chunk)
+        await self.db.flush()
+
+    async def update_fields(self, document_id: UUID | str, **kwargs) -> None:
+        """Update specific fields of a document."""
+        await self.update(document_id, **kwargs)
+
     async def delete_chunks_by_document(self, document_id: UUID | str) -> None:
         """Delete all chunks for a document."""
         await self.db.execute(
