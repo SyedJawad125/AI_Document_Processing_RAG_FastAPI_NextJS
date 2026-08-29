@@ -1198,7 +1198,7 @@ It is intentionally designed as a production-style learning project rather than 
 
 
 
-# 🤖 AI Document Processing & RAG System
+<!-- # 🤖 AI Document Processing & RAG System
 
 <div align="center">
 
@@ -1861,9 +1861,8 @@ This project is open source and available under the [MIT License](LICENSE).
 
 **⭐ Star this repo if you find it useful!**
 
-Built for learning, interviews, and production AI backend engineering.
+Built for learning, interviews, and production AI backend engineering. -->
 
-<!-- </div> -->
 
 
 
