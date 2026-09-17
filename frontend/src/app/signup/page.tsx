@@ -413,11 +413,10 @@ const SignUp = () => {
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
-    username: '',
     email: '',
-    phone: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    company_name: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -435,9 +434,8 @@ const SignUp = () => {
 
   const validateForm = () => {
     // Check if all required fields are filled
-    if (!formData.first_name || !formData.last_name || !formData.username || 
-        !formData.email || !formData.phone || !formData.password) {
-      setError('Please fill in all fields');
+    if (!formData.first_name || !formData.last_name || !formData.email || !formData.password) {
+      setError('Please fill in all required fields');
       return false;
     }
 
@@ -445,13 +443,6 @@ const SignUp = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError('Please enter a valid email address');
-      return false;
-    }
-
-    // Phone validation (basic)
-    const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/;
-    if (!phoneRegex.test(formData.phone)) {
-      setError('Please enter a valid phone number');
       return false;
     }
 
@@ -492,14 +483,14 @@ const SignUp = () => {
 
     try {
       console.log('Attempting registration with:', { ...payload, password: '***' });
-      
-      const response = await AxiosInstance.post('/user/register', payload);
+
+      const response = await AxiosInstance.post('/api/v1/auth/register', payload);
 
       if (response) {
         console.log('Registration successful:', response.data);
-        
+
         // Show success message or redirect
-        router.push('/Login?registered=true');
+        router.push('/login?registered=true');
       }
     } catch (err) {
       console.error('Registration error:', err);
@@ -613,38 +604,10 @@ const SignUp = () => {
               </div>
             </div>
 
-            {/* Username Field */}
-            <div className="group">
-              <label 
-                htmlFor="username" 
-                className="block text-sm font-medium text-white/80 mb-2 transition-all duration-300 group-focus-within:text-cyan-300"
-              >
-                Username
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  id="username"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/30 transition-all duration-300 backdrop-blur-sm"
-                  placeholder="johndoe"
-                  required
-                  disabled={loading}
-                />
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/40">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-            
             {/* Email Field */}
             <div className="group">
-              <label 
-                htmlFor="email" 
+              <label
+                htmlFor="email"
                 className="block text-sm font-medium text-white/80 mb-2 transition-all duration-300 group-focus-within:text-amber-300"
               >
                 Email Address
@@ -669,29 +632,28 @@ const SignUp = () => {
               </div>
             </div>
 
-            {/* Phone Field */}
+            {/* Company Name Field (Optional) */}
             <div className="group">
-              <label 
-                htmlFor="phone" 
+              <label
+                htmlFor="company_name"
                 className="block text-sm font-medium text-white/80 mb-2 transition-all duration-300 group-focus-within:text-cyan-300"
               >
-                Phone Number
+                Company Name (Optional)
               </label>
               <div className="relative">
                 <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
+                  type="text"
+                  id="company_name"
+                  name="company_name"
+                  value={formData.company_name}
                   onChange={handleChange}
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/30 transition-all duration-300 backdrop-blur-sm"
-                  placeholder="+1 (555) 000-0000"
-                  required
+                  placeholder="Acme Corporation"
                   disabled={loading}
                 />
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/40">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
                 </div>
               </div>
