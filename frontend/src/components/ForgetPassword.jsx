@@ -14,6 +14,7 @@ export default function ForgetPassword() {
     const [otp, setOtp] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [resetToken, setResetToken] = useState("");
     const [step, setStep] = useState(1);
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ export default function ForgetPassword() {
 
         setLoading(true);
         try {
-            const response = await AxiosInstance.post('/user/forget-password', { email });
+            const response = await AxiosInstance.post('/api/v1/auth/forgot-password', { email });
             console.log("Email sent successfully:", response);
             toast.success("OTP sent to your email!");
             setStep(2);
@@ -45,7 +46,37 @@ export default function ForgetPassword() {
     };
 
     const handleVerifyOtp = async () => {
-        if (!otp || !newPassword || !confirmPassword) {
+        if (!otp) {
+            toast.error("Please enter OTP");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await AxiosInstance.post('/api/v1/auth/verify-otp', {
+                email,
+                code: otp,
+            });
+            console.log("OTP verified successfully:", response);
+
+            // Store reset token from response
+            if (response.data.data && response.data.data.reset_token) {
+                setResetToken(response.data.data.reset_token);
+                toast.success("OTP verified! Please set your new password.");
+                setStep(3);
+            } else {
+                toast.error("Failed to verify OTP. Please try again.");
+            }
+        } catch (error) {
+            console.error("Error verifying OTP:", error.response?.data || error.message);
+            toast.error("Failed to verify OTP. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResetPassword = async () => {
+        if (!newPassword || !confirmPassword) {
             toast.error("Please fill in all fields");
             return;
         }
@@ -55,42 +86,50 @@ export default function ForgetPassword() {
             return;
         }
 
-        if (newPassword.length < 6) {
-            toast.error("Password must be at least 6 characters");
+        if (newPassword.length < 8) {
+            toast.error("Password must be at least 8 characters");
+            return;
+        }
+
+        if (!resetToken) {
+            toast.error("Invalid reset token. Please start over.");
+            setStep(1);
             return;
         }
 
         setLoading(true);
         try {
-            const response = await AxiosInstance.post('/user/verify-otp', {
-                otp,
+            const response = await AxiosInstance.post('/api/v1/auth/reset-password', {
+                reset_token: resetToken,
                 new_password: newPassword,
-                confirm_password: confirmPassword,
             });
-            console.log("OTP verified successfully:", response);
+            console.log("Password reset successfully:", response);
 
             toast.success("Password reset successful!", {
                 onClose: () => {
-                    router.push("/Login");
+                    router.push("/login");
                 },
             });
 
             setOtp("");
             setNewPassword("");
             setConfirmPassword("");
+            setResetToken("");
         } catch (error) {
-            console.error("Error verifying OTP:", error.response?.data || error.message);
-            toast.error("Failed to verify OTP. Please try again.");
+            console.error("Error resetting password:", error.response?.data || error.message);
+            toast.error("Failed to reset password. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
     const handleback = () => {
-        if (step === 2) {
+        if (step === 3) {
+            setStep(2);
+        } else if (step === 2) {
             setStep(1);
         } else {
-            router.push("/Login");
+            router.push("/login");
         }
     };
 
@@ -126,10 +165,10 @@ export default function ForgetPassword() {
                             </svg>
                         </div>
                         <h2 className="text-3xl font-light text-white tracking-wide">
-                            {step === 1 ? "Forgot Password" : "Verify OTP"}
+                            {step === 1 ? "Forgot Password" : step === 2 ? "Verify OTP" : "Reset Password"}
                         </h2>
                         <p className="text-white/60 text-sm mt-2 font-light">
-                            {step === 1 ? "Enter your email to receive OTP" : "Enter OTP and set new password"}
+                            {step === 1 ? "Enter your email to receive OTP" : step === 2 ? "Enter the OTP sent to your email" : "Set your new password"}
                         </p>
                     </div>
 
@@ -196,12 +235,12 @@ export default function ForgetPassword() {
                                 )}
                             </button>
                         </div>
-                    ) : (
+                    ) : step === 2 ? (
                         <div className="space-y-6">
                             {/* OTP Field */}
                             <div className="group">
-                                <label 
-                                    htmlFor="otp" 
+                                <label
+                                    htmlFor="otp"
                                     className="block text-sm font-medium text-white/80 mb-2 transition-all duration-300 group-focus-within:text-amber-300"
                                 >
                                     OTP Code
@@ -211,10 +250,11 @@ export default function ForgetPassword() {
                                         type="text"
                                         id="otp"
                                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400/30 transition-all duration-300 backdrop-blur-sm"
-                                        placeholder="Enter OTP"
+                                        placeholder="Enter 6-digit OTP"
                                         value={otp}
                                         onChange={(e) => setOtp(e.target.value)}
                                         disabled={loading}
+                                        maxLength={6}
                                     />
                                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/40">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -224,10 +264,47 @@ export default function ForgetPassword() {
                                 </div>
                             </div>
 
+                            {/* Verify OTP Button */}
+                            <button
+                                onClick={handleVerifyOtp}
+                                disabled={loading}
+                                className={`w-full py-4 px-6 rounded-xl font-medium text-white transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] ${
+                                    loading
+                                        ? 'bg-gray-500 cursor-not-allowed'
+                                        : 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 shadow-lg hover:shadow-cyan-500/25'
+                                }`}
+                            >
+                                {loading ? (
+                                    <span className="flex items-center justify-center">
+                                        <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+                                            <circle
+                                                className="opacity-25"
+                                                cx="12"
+                                                cy="12"
+                                                r="10"
+                                                stroke="currentColor"
+                                                strokeWidth="4"
+                                                fill="none"
+                                            />
+                                            <path
+                                                className="opacity-75"
+                                                fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                            />
+                                        </svg>
+                                        Verifying OTP...
+                                    </span>
+                                ) : (
+                                    'Verify OTP'
+                                )}
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
                             {/* New Password Field */}
                             <div className="group">
-                                <label 
-                                    htmlFor="newPassword" 
+                                <label
+                                    htmlFor="newPassword"
                                     className="block text-sm font-medium text-white/80 mb-2 transition-all duration-300 group-focus-within:text-cyan-300"
                                 >
                                     New Password
@@ -237,10 +314,11 @@ export default function ForgetPassword() {
                                         type={showPassword ? "text" : "password"}
                                         id="newPassword"
                                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/30 transition-all duration-300 backdrop-blur-sm pr-12"
-                                        placeholder="Enter new password"
+                                        placeholder="Enter new password (min 8 characters)"
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
                                         disabled={loading}
+                                        minLength={8}
                                     />
                                     <button
                                         type="button"
@@ -254,8 +332,8 @@ export default function ForgetPassword() {
 
                             {/* Confirm Password Field */}
                             <div className="group">
-                                <label 
-                                    htmlFor="confirmPassword" 
+                                <label
+                                    htmlFor="confirmPassword"
                                     className="block text-sm font-medium text-white/80 mb-2 transition-all duration-300 group-focus-within:text-cyan-300"
                                 >
                                     Confirm Password
@@ -282,29 +360,29 @@ export default function ForgetPassword() {
 
                             {/* Reset Password Button */}
                             <button
-                                onClick={handleVerifyOtp}
+                                onClick={handleResetPassword}
                                 disabled={loading}
                                 className={`w-full py-4 px-6 rounded-xl font-medium text-white transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] ${
-                                    loading 
-                                        ? 'bg-gray-500 cursor-not-allowed' 
+                                    loading
+                                        ? 'bg-gray-500 cursor-not-allowed'
                                         : 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 shadow-lg hover:shadow-cyan-500/25'
                                 }`}
                             >
                                 {loading ? (
                                     <span className="flex items-center justify-center">
                                         <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                                            <circle 
-                                                className="opacity-25" 
-                                                cx="12" 
-                                                cy="12" 
-                                                r="10" 
-                                                stroke="currentColor" 
+                                            <circle
+                                                className="opacity-25"
+                                                cx="12"
+                                                cy="12"
+                                                r="10"
+                                                stroke="currentColor"
                                                 strokeWidth="4"
                                                 fill="none"
                                             />
-                                            <path 
-                                                className="opacity-75" 
-                                                fill="currentColor" 
+                                            <path
+                                                className="opacity-75"
+                                                fill="currentColor"
                                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                             />
                                         </svg>
