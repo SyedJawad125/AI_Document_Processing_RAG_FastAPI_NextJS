@@ -57,22 +57,21 @@ const ChangePassword = () => {
     const payload = {
       old_password: currentPassword,
       new_password: newPassword,
-      confirm_password: confirmPassword,
     };
 
     try {
-      const response = await AxiosInstance.post('/api/user/v1/reset/password/', payload, {
+      const response = await AxiosInstance.post('/api/v1/auth/change-password', payload, {
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
-      if (response.status === 200) {
+      if (response.status === 200 || response.data.success) {
         setSuccess('Password changed successfully! Redirecting...');
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        
+
         setTimeout(() => {
           router.push('/admindashboard');
         }, 2000);
