@@ -65,28 +65,28 @@ const Login = () => {
 
     try {
       console.log('Attempting login with:', { email: formData.email });
-      
+
       // Call your login API - backend expects { email, password }
-      const response = await AxiosInstance.post('/api/user/v1/login/', formData);
-      
+      const response = await AxiosInstance.post('/api/v1/auth/login', formData);
+
       console.log('Login API response:', response.data);
 
-      // FastAPI backend returns: { message: "Login successful", access_token: "...", ... }
-      if (response.data.message === 'Login successful' && response.data.access_token) {
-        // Pass response.data directly to login function
-        login(response.data);
-        
+      // FastAPI backend returns: { success: true, data: { user: {...}, tokens: {...}, permissions: [...] } }
+      if (response.data.success && response.data.data) {
+        // Pass response.data.data directly to login function
+        login(response.data.data);
+
         // Handle remember me functionality
         if (rememberMe && typeof window !== 'undefined') {
           localStorage.setItem('rememberMe', 'true');
           localStorage.setItem('lastEmail', formData.email);
         }
-        
+
         // Notify the sidebar about auth change
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('authStateChanged'));
         }
-        
+
         console.log('Login successful, redirecting to admindashboard...');
         router.push('/admindashboard');
 
