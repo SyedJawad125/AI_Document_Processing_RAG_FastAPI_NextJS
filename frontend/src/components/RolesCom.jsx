@@ -27,18 +27,20 @@ const RolesCom = () => {
   // Fetch all permissions
   const fetchAllPermissions = async () => {
     try {
-      // Fetch all permissions without pagination
-      const response = await AxiosInstance.get('/api/permissions/v1/permission/', {
-        params: {
-          skip: 0,
-          limit: 1000, // Fetch a large number
-          include_deleted: false
-        }
-      });
-      
-      if (response.data.status === 'success') {
-        // Store permissions in state
-        setAllPermissions(response.data.result.data || []);
+      // Fetch all permissions
+      const response = await AxiosInstance.get('/api/v1/users/permissions/');
+
+      if (response.data.success) {
+        // Store permissions in state - backend returns grouped by module
+        const permissionsData = response.data.data;
+        // Flatten the grouped permissions into a single array
+        const flatPermissions = [];
+        Object.keys(permissionsData).forEach(module => {
+          permissionsData[module].forEach(perm => {
+            flatPermissions.push(perm);
+          });
+        });
+        setAllPermissions(flatPermissions);
       }
     } catch (error) {
       console.error('Error fetching permissions:', error);
@@ -50,56 +52,32 @@ const RolesCom = () => {
     setLoading(true);
     try {
       const params = {
-        skip: (page - 1) * pagination.limit,
-        limit: pagination.limit,
-        include_deleted: includeDeleted
+        page: page,
+        page_size: pagination.limit
       };
 
-      // Add filters if they exist
-      if (filters.search) params.search = filters.search;
-      if (filters.code) params.code = filters.code;
-      if (filters.name) params.name = filters.name;
-
-      const response = await AxiosInstance.get('/api/roles/v1/role/', {
+      const response = await AxiosInstance.get('/api/v1/users/roles/', {
         params: params
       });
-      
-      if (response.data && response.data.status === "success") {
-        const data = response.data.result;
-        const rolesData = data.data || [];
-        
-        // Check if roles have permissions as objects or just IDs
+
+      if (response.data.success) {
+        const rolesData = response.data.data || [];
+
+        // Backend already returns permissions as objects, so we can use them directly
         const processedRoles = rolesData.map(role => {
-          // If role.permissions is an array of permission objects, use them directly
-          // If it's an array of IDs, map them to permission objects
-          let rolePermissions = [];
-          
-          if (role.permissions && Array.isArray(role.permissions)) {
-            if (role.permissions.length > 0 && typeof role.permissions[0] === 'object') {
-              // Permissions are already objects
-              rolePermissions = role.permissions;
-            } else {
-              // Permissions are IDs, map to permission objects
-              rolePermissions = role.permissions.map(permId => {
-                // Find the permission in allPermissions
-                const foundPerm = allPermissions.find(p => p.id === permId);
-                return foundPerm || { id: permId, name: `Permission ${permId}`, code: `perm_${permId}` };
-              });
-            }
-          }
-          
           return {
             ...role,
-            permissions: rolePermissions
+            permissions: role.permissions || []
           };
+        });
         });
         
         setRolesList(processedRoles);
         setPagination(prev => ({
           ...prev,
           page,
-          total: data.count || 0,
-          totalPages: Math.ceil((data.count || 0) / pagination.limit)
+          total: response.data.count || rolesData.length,
+          totalPages: Math.ceil((response.data.count || rolesData.length) / pagination.limit)
         }));
       }
     } catch (error) {
@@ -164,10 +142,8 @@ const RolesCom = () => {
     }
 
     try {
-      const response = await AxiosInstance.delete(`/api/roles/v1/role/${id}/`, {
-        params: { permanent }
-      });
-      
+      const response = await AxiosInstance.delete(`/api/v1/users/roles/${id}`);
+
       toast.success(response.data?.message || "Role deleted successfully!");
       fetchRoles(pagination.page);
 
