@@ -84,45 +84,53 @@ export const AuthProvider = ({ children }) => {
 
   const login = (apiResponse) => {
     console.log('Login function called with response:', apiResponse);
-    
-    // FastAPI backend returns data directly (not wrapped in .data)
+
+    // FastAPI backend returns: { user: {...}, tokens: {...}, permissions: [...] }
     const responseData = apiResponse;
-    
+
     if (!responseData) {
       console.error('No data in API response');
       return;
     }
 
-    // Extract tokens
-    const accessToken = responseData.access_token;
-    const refreshTokenValue = responseData.refresh_token;
-    
-    // Extract user data from nested user object
+    // Extract tokens from tokens object
+    const tokens = responseData.tokens;
+    if (!tokens) {
+      console.error('No tokens in response');
+      return;
+    }
+
+    const accessToken = tokens.access_token;
+    const refreshTokenValue = tokens.refresh_token;
+
+    // Extract user data from user object
     const userFromResponse = responseData.user;
     if (!userFromResponse) {
       console.error('No user data in response');
       return;
     }
 
-    // Extract permissions (at top level of response)
-    const userPermissions = responseData.permissions || {};
-    
+    // Extract permissions (at top level of response - it's an array)
+    const userPermissionsArray = responseData.permissions || [];
+
+    // Convert permissions array to object for easier checking
+    const userPermissions = {};
+    userPermissionsArray.forEach(perm => {
+      userPermissions[perm] = true;
+    });
+
     // Build user data object
     const userData = {
       id: userFromResponse.id,
-      username: userFromResponse.username,
       email: userFromResponse.email,
-      is_superuser: userFromResponse.is_superuser || false,
-      role_id: userFromResponse.role_id,
-      role_name: userFromResponse.role_name,
-      permissions: userPermissions
+      full_name: userFromResponse.full_name,
+      type: userFromResponse.type,
+      company_id: userFromResponse.company_id,
+      role: userFromResponse.role
     };
 
     // Build role object
-    const roleObject = {
-      id: userFromResponse.role_id,
-      name: userFromResponse.role_name
-    };
+    const roleObject = userFromResponse.role || null;
 
     if (!accessToken || !refreshTokenValue) {
       console.error('Missing tokens in response:', { accessToken, refreshTokenValue });
@@ -153,18 +161,21 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     console.log('Logout function called');
-    
+
     try {
-      // Optional: Call backend logout API if you have one
-      // await AxiosInstance.post('/api/logout', { refresh_token: refreshToken });
-      
+      // Call backend logout API
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        await AxiosInstance.post('/api/v1/auth/logout', { refresh_token: refreshToken });
+      }
+
       // Clear localStorage
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('permissions');
       localStorage.removeItem('role');
       localStorage.removeItem('user');
-      
+
       console.log('Cleared localStorage');
 
       // Clear state
@@ -179,7 +190,11 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
       // Even if API call fails, clear local data
-      localStorage.clear();
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('permissions');
+      localStorage.removeItem('role');
+      localStorage.removeItem('user');
       setToken(null);
       setRefreshToken(null);
       setPermissions({});
@@ -208,7 +223,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const isAuthenticated = !!token;
-  const isSuperuser = user?.is_superuser === true || role?.name === 'Super' || role?.name === 'Admin';
+  const isSuperuser = user?.type === 'superuser' || role?.code_name === 'superuser' || role?.name === 'Superuser';
 
   const getPermissionKeys = () => {
     return Object.keys(permissions).filter(key => permissions[key] === true);
