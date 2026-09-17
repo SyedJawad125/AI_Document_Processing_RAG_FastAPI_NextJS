@@ -130,7 +130,7 @@ import axios from 'axios';
 
 // Create an Axios instance
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8000', 
+  baseURL: 'http://localhost:8000',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -141,7 +141,7 @@ axiosInstance.interceptors.request.use(
   (config) => {
     // Get the access token from localStorage
     const token = localStorage.getItem('access_token');
-    
+
     if (token) {
       // Add Bearer token to Authorization header
       config.headers.Authorization = `Bearer ${token}`;
@@ -149,7 +149,7 @@ axiosInstance.interceptors.request.use(
     } else {
       console.log('Request interceptor: No token found');
     }
-    
+
     return config;
   },
   (error) => {
@@ -173,51 +173,49 @@ axiosInstance.interceptors.response.use(
 
       try {
         console.log('Token expired, attempting to refresh...');
-        
+
         // Get refresh token
         const refreshToken = localStorage.getItem('refresh_token');
-        
+
         if (!refreshToken) {
           console.error('No refresh token found');
           throw new Error('No refresh token available');
         }
 
         // Call refresh token endpoint - CORRECTED TO MATCH BACKEND
-        const response = await axios.post('http://localhost:8000/api/user/v1/refresh/', {
-          refresh_token: refreshToken  // Backend expects 'refresh_token', not 'refresh'
+        const response = await axios.post('http://localhost:8000/api/v1/auth/refresh', {
+          refresh_token: refreshToken  // Backend expects 'refresh_token'
         });
 
-        // Backend returns tokens in data.data structure
+        // Backend returns: { success: true, data: { access_token: "...", token_type: "bearer" } }
         const newAccessToken = response.data.data.access_token;
-        const newRefreshToken = response.data.data.refresh_token;
-        
-        // Store new tokens
+
+        // Store new access token
         localStorage.setItem('access_token', newAccessToken);
-        localStorage.setItem('refresh_token', newRefreshToken);
-        
+
         console.log('Token refreshed successfully');
 
         // Update the failed request with new token
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        
+
         // Retry the original request
         return axiosInstance(originalRequest);
-        
+
       } catch (refreshError) {
         console.error('Token refresh failed:', refreshError);
-        
+
         // Clear all auth data
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('permissions');
         localStorage.removeItem('role');
         localStorage.removeItem('user');
-        
+
         // Redirect to login page
         if (typeof window !== 'undefined') {
           window.location.href = '/login';
         }
-        
+
         return Promise.reject(refreshError);
       }
     }
