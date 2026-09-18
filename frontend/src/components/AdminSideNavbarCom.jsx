@@ -2,7 +2,7 @@
 import { useState, useEffect, useContext, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Home, Users, FileText, Settings, LogOut, Lock, Eye, Menu, X, ChevronRight, User, Shield, Zap, Globe, Image, Key, 
-  ShoppingBag, Tag, MessageSquare} from 'lucide-react';
+  ShoppingBag, Tag, MessageSquare, Brain} from 'lucide-react';
 import { AuthContext } from '@/components/AuthContext';
 
 const AdminSideNavbarCom = () => {
@@ -52,6 +52,14 @@ const AdminSideNavbarCom = () => {
       path: '/blogpostpage',
       roles: ['admin', 'editor', 'super'],
       color: 'purple'
+    },
+    {
+      id: 'ai-documents',
+      label: 'AI Documents',
+      icon: Brain,
+      path: '/ai_document_processing',
+      roles: ['admin', 'editor', 'super'],
+      color: 'violet'
     },
     {
       id: 'images',
@@ -183,6 +191,11 @@ const AdminSideNavbarCom = () => {
         hover: 'hover:bg-purple-500/10',
         icon: 'group-hover:text-purple-400'
       },
+      violet: {
+        active: 'from-violet-600 to-violet-500 shadow-violet-500/30',
+        hover: 'hover:bg-violet-500/10',
+        icon: 'group-hover:text-violet-400'
+      },
       red: {
         active: 'from-red-600 to-red-500 shadow-red-500/30',
         hover: 'hover:bg-red-500/10',
@@ -204,7 +217,7 @@ const AdminSideNavbarCom = () => {
         icon: 'group-hover:text-cyan-400'
       }
     };
-    
+
     return colors[color] || colors.blue;
   };
 
